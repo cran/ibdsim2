@@ -1,0 +1,128 @@
+stop2 = function(...) {
+  a = lapply(list(...), toString)
+  a = append(a, list(call. = FALSE))
+  do.call(stop, a)
+}
+
+# Test that input is a positive (or similar) integer.
+is_count = function(x, minimum = 1) {
+  isTRUE(length(x) == 1 &&
+           (is.integer(x) || (is.numeric(x) && x == as.integer(x))) &&
+           x >= minimum)
+}
+
+
+
+.getAlleles = function(chromdata, posvec) {
+  posvec[posvec < 0] = 0
+  rbind(pos2allele(chromdata[[1]], posvec),
+    pos2allele(chromdata[[2]], posvec))
+}
+
+
+pos2allele = function(haplo, posvec) { # haplo = matrix with 2 columns (breaks - allele)
+  indices = findInterval(posvec, haplo[, 1])
+  haplo[indices, 2]
+}
+
+.sortDouble = function(x) {
+  len = length(x)
+  if(len == 1) 
+    return(x)
+  if(len == 2) {
+    if(x[1] > x[2]) 
+      return(x[2:1])
+    else 
+      return(x)
+  }
+  if(len == 3) {
+    a = x[1]; b = x[2]; c = x[3]
+    if (b < a) {
+      tmp = a
+      a = b
+      b = tmp
+    }
+    if (c < b) {
+      tmp = b
+      b = c
+      c = tmp
+    }
+    if (b < a) {
+      tmp = a
+      a = b
+      b = tmp
+    }
+    return(c(a,b,c))
+  }
+  x[order(x, method = "shell")]
+}
+
+
+.comb2 = function(n) {
+  if (n < 2) return(matrix(nrow = 0, ncol = 2))
+  v1 = rep.int(seq_len(n - 1), (n - 1):1)
+  v2 = NULL
+  for (i in 2:n) v2 = c(v2, i:n)
+  cbind(v1, v2, deparse.level = 0)
+}
+
+`%||%` = function(x, y) {
+  if (is.null(x)) y
+  else x
+}
+
+
+# Private version of `toString`
+#  * Converts sequences to ranges: 1,2,3,5,6,7 -> "1-3, 5-7"
+#  * Default returns if NULL or empty
+toString2 = function(x, ifempty = "-", ifnull = ifempty) {
+  if(is.null(x))
+    return(ifnull)
+  if(!length(x))
+    return(ifempty)
+  
+  xInt = suppressWarnings(as.integer(x))
+  
+  # If not all integers, return toString(x)
+  if(any(is.na(xInt) | x != xInt))
+    return(toString(x))
+
+  conseqs = unname(split(xInt, cumsum(c(0, diff(xInt) != 1))))
+  
+  if(all(lengths(conseqs) == 1))
+    return(toString(x))
+  
+  rngs = sapply(conseqs, function(v) {
+    if(length(v) == 1) as.character(v)
+    else if(length(v) == 2) toString(v)
+    else sprintf("%d-%d", min(v), max(v))
+  })
+  paste(rngs, collapse = ", ")
+}
+
+
+# Utility function: IBD state (0, 1 or 2) for a pair of (non-inbred!) genotypes.
+# Each genotype is a pair of alleles.
+ibd.state = function(gt1, gt2)
+  sum(gt1 %in% gt2)
+
+# Utility function: Jacquard configuration (Sigma 1 - 9) of a pair of genotypes at the same locus.
+jacquard.state = function(pat1, mat1, pat2, mat2) {
+  if (pat1 == mat1) # Sigma 1,2,3 eller 4
+    if (pat2 == mat2) # 1 eller 2
+      if (pat1 == pat2) return(1)
+  else return(2)
+  else
+    if (pat1 == pat2 || pat1 == mat2) return(3)
+  else return(4)
+  
+  if (pat2 == mat2)
+    if (pat2 == pat1 || pat2 == mat1) return(5)
+  else return(6)
+  
+  # If still running: No inbreeding
+  ibd = ibd.state(c(pat1, mat1), c(pat2, mat2))
+  return((9:7)[ibd + 1])
+}
+
+

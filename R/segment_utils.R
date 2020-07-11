@@ -1,13 +1,29 @@
 segmentSummary = function(x, ids, addState = TRUE) {
-  if(ncol(x) == 4 + 2 * length(ids) + 2 * (length(ids) == 2))
-    return(x)
+  if(!inherits(x, "genomeSim"))
+    stop2("Argument `x` must be a `genomeSim` object. Received: ", class(x))
+  
+  xids = extractIdsFromSegmentSummary(x)
+  if(!all(ids %in% xids))
+    stop2("Unknown ID label: ", setdiff(ids, xids))
+  
+  n = length(ids)
+  
+  if(setequal(ids, xids)) {
+    if(n > 2 || !addState) 
+      return(x)
+    if(n == 1 && "Aut" %in% colnames(x))
+      return(x)
+    if(n == 2 && "Sigma" %in% colnames(x))
+      return(x)
+  }
   
   # Allele columns of selected ids
   colnms = paste(rep(ids, each = 2), c("p", "m"), sep = ":")
   
   # Merge identical rows
-  y = mergeAdjacent(x, vec = apply(x[, colnms], 1, paste, collapse = " "))
-  y = y[, c(1:4, match(colnms, colnames(x)))]
+  alsCombo = apply(x[, colnms, drop = FALSE], 1, paste, collapse = "-")
+  y = mergeAdjacent(x, vec = alsCombo)
+  y = y[, c(1:4, match(colnms, colnames(x))), drop = FALSE]
   
   if(addState)
     y = addStates(y)
@@ -18,6 +34,8 @@ segmentSummary = function(x, ids, addState = TRUE) {
 # Merge adjacent segments with equal `vec` entry and equal chrom
 mergeAdjacent = function(x, vec) {
   k = nrow(x)
+  if(k < 2)
+    return(x)
   
   if(length(vec) == 1 && is.character(vec))
     vec = x[, vec]

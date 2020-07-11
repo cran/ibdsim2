@@ -20,8 +20,8 @@ plotSegmentDistribution(
 )
 }
 \arguments{
-\item{\dots}{One or several objects of class \code{genomeSimList}, i.e. outputs of
-\code{\link[=ibdsim]{ibdsim()}}. They can be entered separately or as a list.}
+\item{\dots}{One or several objects of class \code{genomeSimList}, typically created by
+\code{\link[=ibdsim]{ibdsim()}}. They can be entered separately or as a \code{list}.}
 
 \item{type}{A string indicating which segments should be plotted. Currently,
 the allowed entries are "autozygosity" and "ibd1".}
@@ -50,7 +50,7 @@ NULL, the labels are taken from \code{names(...)}.}
 \item{legendInside}{A logical controlling the legend placement.}
 }
 \description{
-Visualise and compare count/size distributions of IBD segments. Two types are
+Visualise and compare count/length distributions of IBD segments. Two types are
 currently implemented: Segments of autozygosity (for a single person) and
 segments with (pairwise) IBD state 1.
 }
@@ -63,6 +63,16 @@ Contour curves are added to plot, corresponding to the
 theoretical/pedigree-based values: either inbreeding coefficients (if \code{type = "autozygosity"}) or \eqn{\kappa_1} (if \code{type = "ibd1"}).
 }
 \examples{
+
+# Simulation parameters used in the below examples.
+map = uniformMap(M = 10)   # recombination map
+N = 5                      # number of sims
+
+# For more realistic results, replace with e.g.:
+# map = loadMap("decode19")
+# N = 1000
+
+
 #################################################################
 # EXAMPLE 1
 # Comparison of IBD segment distributions
@@ -73,10 +83,8 @@ theoretical/pedigree-based values: either inbreeding coefficients (if \code{type
 xPat = halfSibPed()
 xMat = swapSex(xPat, 1)
 
-# Simulate (increase N!)
-N = 10
-simPat = ibdsim(xPat, N = N, map = "uniform.sex.spec")
-simMat = ibdsim(xMat, N = N, map = "uniform.sex.spec")
+simPat = ibdsim(xPat, N = N, map = map)
+simMat = ibdsim(xMat, N = N, map = map)
 
 # By default, the IBD segments of the "leaves" are computed and plotted
 plotSegmentDistribution(simPat, simMat, type = "ibd1", ids = 4:5,
@@ -90,9 +98,7 @@ plotSegmentDistribution(simPat, simMat, type = "ibd1", ids = 4:5,
 # Only one pedigree needed here
 x = addSon(halfSibPed(), 5)
 
-# Simulate
-N = 10
-s = ibdsim(x, N = N, map = "uniform.sex.spec")
+s = ibdsim(x, N = N, map = map)
 
 # Indicate the pairs explicitly this time.
 ids = list(HS = 4:5, HU = c(4,7), GR = c(1,7))
@@ -119,9 +125,9 @@ peds = list(G = G, HSpat = HSpat, HSmat = HSmat, QHFC = QHFC)
 plotPedList(peds, newdev = TRUE)
 dev.off()
 
-# Simulations (increase N!))
+# Simulations
 s = lapply(peds, function(p)
-  ibdsim(p, N = 10, ids = leaves(p), map = "uniform.sex.spec", verbose = FALSE))
+  ibdsim(p, N = N, ids = leaves(p), verbose = FALSE, map = map))
 
 # Plot distributions
 plotSegmentDistribution(s, type = "autoz", title = "Autozygous segments")

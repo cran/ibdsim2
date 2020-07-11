@@ -10,10 +10,11 @@ pedigrees. In particular, such simulations can be used to study
 distributions of chromosomal segments shared *identical-by-descent*
 (IBD) by pedigree members. In each meiosis, the recombination process is
 simulated using sex specific recombination rates in the human genome
-([Kong et al., 2010](https://doi.org/10.1038/nature09525)), or with
-recombination maps provided by the user. Additional features include
-calculation of realised relatedness coefficients, distribution plots of
-IBD segments, and estimation of two-locus relatedness coefficients.
+([Halldorsson et al., 2019](https://doi.org/10.1126/science.aau1043)),
+or with recombination maps provided by the user. Additional features
+include calculation of realised relatedness coefficients, distribution
+plots of IBD segments, and estimation of two-locus relatedness
+coefficients.
 
 **ibdsim2** is an updated and improved version of
 [IBDsim](https://CRAN.R-project.org/package=IBDsim). In particular, the
@@ -81,15 +82,15 @@ Next, we use `ibdsim()` to produce 1000 simulations of the underlying
 IBD pattern in the entire pedigree.
 
 ``` r
-s = ibdsim(x, N = 1000, map = "uniform.sex.spec")
+s = ibdsim(x, N = 1000, map = loadMap("decode19"))
 #> Simulation parameters:
-#> No. of sims: 1000
-#> Chromosomes: 1-22
-#> Total len  : 2864.3 Mb
-#> Rec. model : chi
-#> Target ids : 1-7
-#> Skip recomb: -
-#> Total time used: 14.8 secs
+#> # simulations: 1000
+#> Chromosomes  : 1-22
+#> Genome length: 2753.931711 Mb
+#> Recomb model : chi
+#> Target indivs: 1-7
+#> Skip recomb  : -
+#> Total time used: 43.6 secs
 ```
 
 The `plotSegmentDistribution()` function, with the option `type =

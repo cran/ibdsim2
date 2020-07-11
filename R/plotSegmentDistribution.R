@@ -1,6 +1,6 @@
 #' Scatter plots of IBD segment distributions
 #'
-#' Visualise and compare count/size distributions of IBD segments. Two types are
+#' Visualise and compare count/length distributions of IBD segments. Two types are
 #' currently implemented: Segments of autozygosity (for a single person) and
 #' segments with (pairwise) IBD state 1.
 #'
@@ -12,8 +12,8 @@
 #' theoretical/pedigree-based values: either inbreeding coefficients (if `type =
 #' "autozygosity"`) or \eqn{\kappa_1} (if `type = "ibd1"`).
 #'
-#' @param \dots One or several objects of class `genomeSimList`, i.e. outputs of
-#'   [ibdsim()]. They can be entered separately or as a list.
+#' @param \dots One or several objects of class `genomeSimList`, typically created by
+#'   [ibdsim()]. They can be entered separately or as a `list`.
 #' @param type A string indicating which segments should be plotted. Currently,
 #'   the allowed entries are "autozygosity" and "ibd1".
 #' @param ids A list of the same length as `...`, where each entry contains one
@@ -33,6 +33,16 @@
 #' @param title,xlab,ylab Title and axis labels.
 #'
 #' @examples
+#' 
+#' # Simulation parameters used in the below examples.
+#' map = uniformMap(M = 10)   # recombination map
+#' N = 5                      # number of sims
+#' 
+#' # For more realistic results, replace with e.g.:
+#' # map = loadMap("decode19")
+#' # N = 1000
+#' 
+#' 
 #' #################################################################
 #' # EXAMPLE 1
 #' # Comparison of IBD segment distributions
@@ -43,10 +53,8 @@
 #' xPat = halfSibPed()
 #' xMat = swapSex(xPat, 1)
 #'
-#' # Simulate (increase N!)
-#' N = 10
-#' simPat = ibdsim(xPat, N = N, map = "uniform.sex.spec")
-#' simMat = ibdsim(xMat, N = N, map = "uniform.sex.spec")
+#' simPat = ibdsim(xPat, N = N, map = map)
+#' simMat = ibdsim(xMat, N = N, map = map)
 #'
 #' # By default, the IBD segments of the "leaves" are computed and plotted
 #' plotSegmentDistribution(simPat, simMat, type = "ibd1", ids = 4:5,
@@ -60,9 +68,7 @@
 #' # Only one pedigree needed here
 #' x = addSon(halfSibPed(), 5)
 #'
-#' # Simulate
-#' N = 10
-#' s = ibdsim(x, N = N, map = "uniform.sex.spec")
+#' s = ibdsim(x, N = N, map = map)
 #'
 #' # Indicate the pairs explicitly this time.
 #' ids = list(HS = 4:5, HU = c(4,7), GR = c(1,7))
@@ -89,9 +95,9 @@
 #' plotPedList(peds, newdev = TRUE)
 #' dev.off()
 #'
-#' # Simulations (increase N!))
+#' # Simulations
 #' s = lapply(peds, function(p)
-#'   ibdsim(p, N = 10, ids = leaves(p), map = "uniform.sex.spec", verbose = FALSE))
+#'   ibdsim(p, N = N, ids = leaves(p), verbose = FALSE, map = map))
 #'
 #' # Plot distributions
 #' plotSegmentDistribution(s, type = "autoz", title = "Autozygous segments")
@@ -193,7 +199,7 @@ plotSegmentDistribution.autoz = function(sims, ids, col = NULL, shape = 1, alpha
     inbreeding(attr(sims[[i]], "pedigree"), id = as.character(ids[[i]])))
   
   expect.args = list(values = fPed, 
-                     genomeLen = attr(sims[[1]], "genome_length_Mb"),
+                     genomeLen = attr(sims[[1]], "genomeLen"),
                      label = expression(Expected~italic(f)))
   
   # Create the plot
@@ -222,11 +228,10 @@ plotSegmentDistribution.ibd1 = function(sims, ids, col = NULL, shape = 1, alpha 
     if(any(real$nSeg2 > 0)) 
       message("Warning: Simulation list ", i, " includes IBD = 2 segments. Expected 'kappa_1 curve' will be wrong!")
     
-    L = attr(s, "genome_length_Mb")
-    data.frame(nSeg = real$nSeg1,
-               meanLen = real$k1 * L / real$nSeg1, 
-               relation = labs[i])
-    
+    L = attr(s, "genomeLen")
+    nSeg = real$nSeg1
+    meanLen = ifelse(nSeg > 0, real$k1 * L / nSeg, 0)
+    data.frame(nSeg = nSeg,  meanLen = meanLen, relation = labs[i])
   })
   
   plotDat = do.call(rbind, plotDatList)
@@ -237,7 +242,7 @@ plotSegmentDistribution.ibd1 = function(sims, ids, col = NULL, shape = 1, alpha 
     4 * kinship(attr(sims[[i]], "pedigree"), as.character(ids[[i]])))
   
   expect.args = list(values = kappa1, 
-                     genomeLen = attr(sims[[1]], "genome_length_Mb"),
+                     genomeLen = attr(sims[[1]], "genomeLen"),
                      label = expression(Expected~kappa[1]))
   
   # Create the plot

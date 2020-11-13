@@ -3,6 +3,14 @@
 
 # ibdsim2 <img src="man/figures/logo.png" align="right" height=140/>
 
+<!-- badges: start -->
+
+[![CRAN
+status](https://www.r-pkg.org/badges/version/ibdsim2)](https://CRAN.R-project.org/package=ibdsim2)
+[![](https://cranlogs.r-pkg.org/badges/grand-total/ibdsim2?color=yellow)](https://cran.r-project.org/package=ibdsim2)
+[![](https://cranlogs.r-pkg.org/badges/last-month/ibdsim2?color=yellow)](https://cran.r-project.org/package=ibdsim2)
+<!-- badges: end -->
+
 ## Introduction
 
 The purpose of **ibdsim2** is to simulate and analyse the gene flow in
@@ -29,18 +37,84 @@ individuals.
 
 ## Installation
 
-**ibdsim2** is under development and can be installed from GitHub as
-follows:
+To get **ibdsim2**, install from CRAN as follows:
 
 ``` r
- # First install devtools if needed
-if(!require(devtools)) install.packages("devtools")
+install.packages("ibdsim2")
+```
 
-# Install pedtools from github
+Alternatively, the latest development version can be installed from
+GitHub:
+
+``` r
+# install.packages("devtools") # if needed
 devtools::install_github("magnusdv/ibdsim2")
 ```
 
-## Example: Distributions of IBD segments
+## Example 1: A simple simulation
+
+The most important function in **ibdsim2** is `ibdsim()`, which
+simulates the recombination process in a given pedigree. In this example
+we demonstrate this for in a family quartet, and show how to visualise
+the result.
+
+We start by loading **ibdsim2**.
+
+``` r
+library(ibdsim2)
+```
+
+The main input to `ibdsim()` is a pedigree and a recombination map. In
+our case we use `pedtools::nuclearPed()` to create the pedigree, and we
+load chromosome 1 of the built-in map of human recombination.
+
+``` r
+# Pedigree with two siblings
+x = nuclearPed(2)
+
+# Recombination map
+chr1 = loadMap("decode19", chrom = 1)
+```
+
+Now run the simulation\! The `seed` argument ensures reproducibility.
+
+``` r
+sim = ibdsim(x, N = 1, map = chr1, seed = 1234, verbose = F)
+```
+
+The output of `ibdsim()` is a list of length `N` (the number of
+simulations), where each simulation result is contained in matrix form.
+Here are the first few rows of the single simulation we just made:
+
+``` r
+head(sim[[1]])
+#>      chrom     start       end     length 1:p 1:m 2:p 2:m 3:p 3:m 4:p 4:m
+#> [1,]     1  1.431813  6.386532  4.9547193   1   2   3   4   2   4   2   4
+#> [2,]     1  6.386532 19.733718 13.3471854   1   2   3   4   2   4   2   3
+#> [3,]     1 19.733718 20.220621  0.4869035   1   2   3   4   1   4   2   3
+#> [4,]     1 20.220621 58.236210 38.0155893   1   2   3   4   1   4   2   4
+#> [5,]     1 58.236210 59.425280  1.1890698   1   2   3   4   1   3   2   4
+#> [6,]     1 59.425280 82.385463 22.9601825   1   2   3   4   1   3   2   3
+```
+
+Each row of the matrix corresponds to a segment of the genome, and
+describes the allelic state of the pedigree in that segment. Each
+individual has two columns, one with the paternal allele (marked by the
+suffix “:p”) and one with the maternal (suffix “:m”). The founders (the
+parents in our case) are assigned alleles 1, 2, 3 and 4.
+
+The function `haploDraw()` interprets the allele 1-4 as colours, and
+draws the resulting haplotypes onto the pedigree. See `?haploDraw` for
+explanation of the arguments.
+
+``` r
+haploDraw(x, sim[[1]], pos = c(2, 4, 1, 1), cols = c(3, 7, 2, 4), 
+          margin = c(6, 4, 3, 4))
+```
+
+<img src="man/figures/README-quartet-haplo-1.png" style="display: block; margin: auto;" />
+
+## Example 2: Distributions of IBD segments
 
 In this example we will compare the distributions of counts/lengths of
 IBD segments between the following pairwise relationships:
@@ -49,16 +123,10 @@ IBD segments between the following pairwise relationships:
   - Half siblings (HS)
   - Half uncle/nephew (HU)
 
-Note that GR and HS have the same relatedness coefficients
-\(\kappa = (\frac12, \frac12, 0)\), meaning that they are genetically
-indistinguishable in the context of unlinked loci. In contrast, HU has
-\(\kappa = (\frac34, \frac14, 0)\).
-
-We start by loading **ibdsim2**.
-
-``` r
-library(ibdsim2)
-```
+Note that GR and HS have the same relatedness coefficients `kappa =
+(1/2, 1/2, 0)`, meaning that they are genetically indistinguishable in
+the context of unlinked loci. In contrast, HU has `kappa =
+(3/4, 1/4, 0)`.
 
 For simplicity we create a pedigree containing all the three
 relationships we are interested in.
@@ -73,24 +141,26 @@ plot(x)
 We store the ID labels of the three relationships in a list.
 
 ``` r
-ids = list(GR = c(1,7), 
+ids = list(GR = c(2,7), 
            HS = 4:5, 
            HU = c(4,7))
 ```
 
-Next, we use `ibdsim()` to produce 1000 simulations of the underlying
-IBD pattern in the entire pedigree.
+Next, we use `ibdsim()` to produce 500 simulations of the underlying IBD
+pattern in the entire pedigree.
 
 ``` r
-s = ibdsim(x, N = 1000, map = loadMap("decode19"))
+s = ibdsim(x, N = 500, map = "decode19")
 #> Simulation parameters:
-#> # simulations: 1000
+#> Simulations  : 500
 #> Chromosomes  : 1-22
-#> Genome length: 2753.931711 Mb
+#> Genome length: 2753.93 Mb
+#>                2602.29 cM (male)
+#>                4180.42 cM (female)
 #> Recomb model : chi
 #> Target indivs: 1-7
 #> Skip recomb  : -
-#> Total time used: 43.6 secs
+#> Total time used: 11.7 secs
 ```
 
 The `plotSegmentDistribution()` function, with the option `type =
@@ -98,12 +168,11 @@ The `plotSegmentDistribution()` function, with the option `type =
 plot. Note that the names of the `ids` list are used in the legend.
 
 ``` r
-plotSegmentDistribution(s, type = "ibd1", ids = ids, shape = 1:3 )
+plotSegmentDistribution(s, type = "ibd1", ids = ids, shape = 1:3)
 ```
 
 <img src="man/figures/README-ibdsim2-example-distplot-1.png" style="display: block; margin: auto;" />
 
 We conclude that the three distributions are almost completely disjoint.
-In particular, this suggests that GR and HS relationships are separable
-on the basis of their IBD segments, if these can be determined
-accurately enough.
+In particular, GR and HS are separable on the basis of their IBD
+segments, if these can be determined accurately enough.

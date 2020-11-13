@@ -11,7 +11,7 @@
 #' @param ibdpattern A `genomeSim()` object, typically created by [ibdsim()].
 #'   (See Examples).
 #' @param ids A vector of ID labels. If NULL, all members of `x` are included.
-#' @param markers A vector with names of indices of markers attached to `x`.
+#' @param markers A vector with names or indices of markers attached to `x`.
 #' @param seed An integer seed for the random number generator.
 #'
 #' @return An object similar to `x`. but with simulated genotypes.
@@ -58,7 +58,6 @@ profileSimIBD = function(x, ibdpattern, ids = NULL, markers = NULL, seed = NULL)
   achr = a[, 'chrom']
   
   nMark = nMarkers(x)
-  mname = name(x, 1:nMark)
   mchr  = chrom(x, 1:nMark)
   mpos  = posMb(x, 1:nMark)
   
@@ -71,7 +70,7 @@ profileSimIBD = function(x, ibdpattern, ids = NULL, markers = NULL, seed = NULL)
   # Pick rows (indices) in `a` corresponding to marker positions
   arows = vapply(seq_len(nMark), function(i) {
     chrrows = which(achr == mchr[i])
-    chrrows[findInterval(mpos[i], a[chrrows, 'start'])]
+    chrrows[findInterval(mpos[i], a[chrrows, 'start'], all.inside = TRUE)]
   }, FUN.VALUE = 1L)
   
   
@@ -109,6 +108,9 @@ profileSimIBD = function(x, ibdpattern, ids = NULL, markers = NULL, seed = NULL)
   alsMat = t.default(alsMat.transp)
   
   # Attach and return
-  setAlleles(x, ids = ids, alleles = alsMat)
+  y = setAlleles(x, ids = ids, alleles = alsMat)
+  y = sortGenotypes(y)
+  
+  y
 }
 

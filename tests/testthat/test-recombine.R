@@ -1,4 +1,4 @@
-context("Rcpp recombine")
+skip_on_cran()
 
 test_that("recombinations of pure strands", {
   recombine = ibdsim2:::recombine
@@ -10,7 +10,6 @@ test_that("recombinations of pure strands", {
   expect_equal(recombine(s1, s2, 1:2), cbind(c(0,1,2), c(1,2,1)))
   expect_equal(recombine(s1, s2, 1:3), cbind(c(0,1,2,3), c(1,2,1,2)))
 })
-
 
 test_that("more recombinations", {
   recombine = ibdsim2:::recombine

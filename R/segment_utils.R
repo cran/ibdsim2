@@ -1,8 +1,9 @@
-segmentSummary = function(x, ids, addState = TRUE) {
+
+alleleFlow = function(x, ids, addState = TRUE) {
   if(!inherits(x, "genomeSim"))
     stop2("Argument `x` must be a `genomeSim` object. Received: ", class(x))
   
-  xids = extractIdsFromSegmentSummary(x)
+  xids = extractIds(x)
   if(!all(ids %in% xids))
     stop2("Unknown ID label: ", setdiff(ids, xids))
   
@@ -18,12 +19,11 @@ segmentSummary = function(x, ids, addState = TRUE) {
   }
   
   # Allele columns of selected ids
-  colnms = paste(rep(ids, each = 2), c("p", "m"), sep = ":")
+  cols = paste(rep(ids, each = 2), c("p", "m"), sep = ":")
+  y = mergeSegments(x, by = cols)
   
-  # Merge identical rows
-  alsCombo = apply(x[, colnms, drop = FALSE], 1, paste, collapse = "-")
-  y = mergeAdjacent(x, vec = alsCombo)
-  y = y[, c(1:4, match(colnms, colnames(x))), drop = FALSE]
+  # Keep only allele columns of selected ids
+  y = y[, c(1:4, which(colnames(x) %in% cols)), drop = FALSE]
   
   if(addState)
     y = addStates(y)
@@ -31,29 +31,46 @@ segmentSummary = function(x, ids, addState = TRUE) {
   y
 }
 
-# Merge adjacent segments with equal `vec` entry and equal chrom
-mergeAdjacent = function(x, vec) {
+# Merge segments (on the same chrom) with equal entries in `by` (single vector or column names)
+mergeSegments = function(x, by = NULL, checkAdjacency = FALSE) {
   k = nrow(x)
   if(k < 2)
     return(x)
   
-  if(length(vec) == 1 && is.character(vec))
-    vec = x[, vec]
-  else if(length(vec) != k)
-    stop2("Incompatible input")
+  # Rows where chromosome is unchanged
+  chrEq = x[-1, 'chrom'] == x[-k, 'chrom']
+  mergeRow = chrEq
   
-  chr = x[, 'chrom']
+  # Rows where `by` elements don't change
+  if(!is.null(by)) {
+    byLen = length(by)
+    
+    if(is.character(by) && all(by %in% colnames(x))) { # Interpret as column names
+      if(byLen == 1)
+        byEq = x[-1, by] == x[-k, by]
+      else
+        byEq = rowSums(x[-1, by] == x[-k, by]) == byLen
+    }
+    else if(byLen == k && (is.numeric(by) || is.character(by))) {
+      byEq = by[-1] == by[-k]
+    }
+    else
+      stop2("Wrong format or length of argument `by`")
+    
+    mergeRow = chrEq & byEq
+  }
   
-  vecEq = vec[-1] == vec[-k]
-  chrEq = chr[-1] == chr[-k]
+  # Segment adjacency
+  if(checkAdjacency) {
+    adjac = x[-1, 'start'] == x[-k, 'end']
+    mergeRow = mergeRow & adjac
+  }
   
-  mergeRow = vecEq & chrEq
   if(!any(mergeRow))
     return(x)
   
   fromRow = which(c(TRUE, !mergeRow))
   toRow = c(fromRow[-1] - 1, k)
-  
   
   y = x[fromRow, , drop = FALSE]
   y[, 'end'] = x[toRow, 'end']
@@ -62,6 +79,83 @@ mergeAdjacent = function(x, vec) {
 }
 
 
+#' Summary statistics for identified segments
+#'
+#' Compute summary statistics for segments identified by [findPattern()].
+#'
+#' @param x A list of matrices produced with [findPattern()].
+#' @param quantiles A vector of quantiles to include in the summary.
+#' @param returnAll A logical, by default FALSE. If TRUE, the output includes a
+#'   vector `allSegs` containing the lengths of all segments in all simulations.
+#'
+#' @return A list containing a data frame `perSim`, a matrix `summary` and (if
+#'   `returnAll` is TRUE) a vector `allSegs`.
+#'
+#'   Variables used in the output:
+#'
+#'   * `Count`: The total number of segments in a simulation
+#'
+#'   * `Total`: The total sum of the segment lengths in a simulation
+#'
+#'   * `Average`: The average segment lengths in a simulation
+#'
+#'   * `Shortest`: The length of the shortest segment in a simulation
+#'
+#'   * `Longest`: The length of the longest segment in a simulation
+#'
+#'   * `Overall` (only in `summary`): A summary of all segments from all
+#'   simulations
+#'
+#' @seealso [findPattern()]
+#'
+#' @examples
+#' x = nuclearPed(3)
+#' sims = ibdsim(x, N = 2, map = uniformMap(M = 2), model = "haldane", seed = 1729)
+#'
+#' # Segments where all siblings carry the same allele
+#' segs = findPattern(sims, pattern = list(carriers = 3:5))
+#'
+#' # Summarise
+#' segmentStats(segs)
+#'
+#' @importFrom stats quantile
+#' @export
+segmentStats = function(x, quantiles = c(0.025, 0.5, 0.975), returnAll = FALSE) {
+  
+  if(is.matrix(x))
+    x = list(x)
+  
+  # List of lengths
+  lenDat = lapply(x, function(m) m[, 'length'])
+  
+  # Collect data for each sim
+  perSim = data.frame(
+    `Count`    = lengths(lenDat),
+    `Total`    = vapply(lenDat, sum, FUN.VALUE = numeric(1)), 
+    `Average`  = vapply(lenDat, safeMean, FUN.VALUE = numeric(1)), 
+    `Shortest` = vapply(lenDat, safeMin, FUN.VALUE = numeric(1)),
+    `Longest`  = vapply(lenDat, safeMax, FUN.VALUE = numeric(1)))
+  
+  # Summarising function
+  sumfun = function(v) c(mean = safeMean(v), sd = sd(v), min = safeMin(v), quantile(v, quantiles), max = safeMax(v))
+  
+  # Summary
+  sumList = lapply(perSim, sumfun)
+  
+  # Add stats of overall lengths
+  allSegs = unlist(lenDat, use.names = FALSE)
+  sumList$Overall = sumfun(allSegs)
+  
+  # Return as data frames
+  res = list(perSim = perSim, summary = do.call(rbind, sumList))
+  if(returnAll)
+    res$allSegs = allSegs
+  
+  res
+}
+
+
+# TODO: Remove. Superseded by the new `mergeSegments()`
 mergeConsecutiveSegments = function(df, mergeBy, segStart = "start", 
                                     segEnd = "end", segLength = "length") {
   N = nrow(df)
@@ -87,7 +181,7 @@ mergeConsecutiveSegments = function(df, mergeBy, segStart = "start",
   newdf[, segEnd] = df[ends, segEnd]
   
   # Fix lengths if present
-  if(!is.null(segLength) && segLength %in% names(df))
+  if(!is.null(segLength) && segLength %in% colnames(df))
     newdf[, segLength] = newdf[, segEnd] - newdf[, segStart] 
   
   newdf

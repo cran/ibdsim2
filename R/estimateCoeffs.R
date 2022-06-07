@@ -32,15 +32,14 @@
 #' @param x A pedigree in the form of a [pedtools::ped()] object.
 #' @param id,ids A vector of one or two ID labels.
 #' @param rho A scalar in the interval `[0, 0.5]`: the recombination fraction
-#'   between the two loci, converted to centiMorgans using Haldane's map function:
-#'   cM = -50 * log(1 - 2 * rho). Either `rho` or `cM` (but not both) must be
-#'   non-NULL.
+#'   between the two loci, converted to centiMorgans using Haldane's map
+#'   function: cM = -50 * log(1 - 2 * rho). Either `rho` or `cM` (but not both)
+#'   must be non-NULL.
 #' @param cM A non-negative number: the genetic distance between the two loci,
 #'   given in centiMorgans. Either `rho` or `cM` (but not both) must be
 #'   non-NULL.
 #' @param Nsim The number of simulations.
-#' @param Xchrom A logical indicating if the loci are X-linked (if TRUE) or
-#'   autosomal (FALSE).
+#' @param Xchrom A logical indicating if the loci are X-linked or autosomal.
 #' @param verbose A logical.
 #' @param ... Further arguments passed on to [ibdsim()], e.g. `seed`.
 #'
@@ -127,6 +126,12 @@ NULL
 estimateInbreeding = function(x, id, Nsim, Xchrom = FALSE, verbose = FALSE, ...) {
   st = proc.time()
   
+  if(missing(id) && "ids" %in% names(list(...)))
+    stop2("Illegal argument `ids`. Please use `id` instead")
+  
+  if(length(id) != 1)
+    stop2("Argument `id` must have length 1: ", id)
+  
   # Define map of length 0
   map = uniformMap(cM = 0, chrom = if (Xchrom) "X" else 1)
   
@@ -147,6 +152,12 @@ estimateInbreeding = function(x, id, Nsim, Xchrom = FALSE, verbose = FALSE, ...)
 estimateTwoLocusInbreeding = function(x, id, rho = NULL, cM = NULL, Nsim, 
                                       Xchrom = FALSE, verbose = FALSE, ...) {
   st = proc.time()
+  
+  if(missing(id) && "ids" %in% names(list(...)))
+    stop2("Illegal argument `ids`. Please use `id` instead")
+  
+  if(length(id) != 1)
+    stop2("Argument `id` must have length 1: ", id)
   
   if (is.null(cM) + is.null(rho) != 1) 
     stop2("Exactly one of the parameters `cM` and `rho` must be non-NULL")
@@ -186,6 +197,9 @@ estimateTwoLocusInbreeding = function(x, id, rho = NULL, cM = NULL, Nsim,
 #' @export
 estimateKinship = function(x, ids, Nsim, Xchrom = FALSE, verbose = FALSE, ...) {
   st = proc.time()
+  
+  if(length(ids) != 2)
+    stop2("Argument `ids` must have length 1: ", ids)
   
   # Define map of length 0
   map = uniformMap(cM = 0, chrom = if (Xchrom) "X" else 1)
@@ -248,6 +262,9 @@ estimateTwoLocusKinship = function(x, ids, rho = NULL, cM = NULL, Nsim,
 #' @export
 estimateKappa = function(x, ids, Nsim, Xchrom = FALSE, verbose = FALSE, ...) {
   st = proc.time()
+  
+  if(length(ids) != 2)
+    stop2("Argument `ids` must have length 1: ", ids)
   
   # Define map of length 0
   map = uniformMap(cM = 0, chrom = if (Xchrom) "X" else 1)

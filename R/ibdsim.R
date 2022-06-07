@@ -63,10 +63,9 @@
 #'
 #'   * `IBD` : The IBD status of each segment (= number of alleles shared
 #'   identical by descent). For a given segment, the IBD status is either 0, 1,
-#'   2 or NA. If either individual is inbred, they may be autozygous in a
-#'   segment, in which case the IBD status is reported as NA. With inbred
-#'   individuals the `Sigma` column (see below) is more informative than the
-#'   `IBD` column.
+#'   2 or NA. If either individual is autozygous in a segment, the IBD status is
+#'   reported as NA. With inbred individuals the `Sigma` column (see below) is
+#'   more informative than the `IBD` column.
 #'
 #'   * `Sigma` : The condensed identity ("Jacquard") state of each segment,
 #'   given as an integer in the range 1-9. The numbers correspond to the
@@ -81,7 +80,12 @@
 #' @examples
 #'
 #' hs = halfSibPed()
-#' ibdsim(hs, N = 2, map = uniformMap(M = 1), ids = 4:5)
+#' sims = ibdsim(hs, N = 2, map = uniformMap(M = 1), seed = 10)
+#' sims
+#' 
+#' # Inspect the first simulation
+#' sims[[1]]
+#' haploDraw(hs, sims[[1]], pos = 2)
 #'
 #' # Full sib mating: all 9 states are possible
 #' x = fullSibMating(1)
@@ -111,28 +115,19 @@ ibdsim = function(x, N = 1, ids = labels(x), map = "decode",
   starttime = Sys.time()
 
   # Load map and extract chromosome names
-  if(is.character(map) && length(map) == 1) {
-    if(map == "uniform.sex.spec") {
-      message('The option `map = "uniform.sex.spec"` is deprecated and will be removed in a future version\n',
-              "Use `map = loadMap(uniform = T)` instead")
-      map = loadMap(uniform = TRUE, sexAverage = FALSE)
-    }
-    else if(map == "uniform.sex.aver") {
-      message('The option `map = "uniform.sex.aver"` is deprecated and will be removed in a future version\n',
-              "Use `map = loadMap(uniform = T, sexAverage = T)` instead")
-      map = loadMap(uniform = TRUE, sexAverage = TRUE)
-    }   
-    else
-      map = loadMap(map)
-  }
+  if(is.character(map) && length(map) == 1)
+    map = loadMap(map)
   else if(isChromMap(map) || (is.list(map) && all(sapply(map, isChromMap))))
     map = genomeMap(map)
   else if(!isGenomeMap(map))
     stop2("Argument `map` must be either a `genomeMap`, a single `chromMap` or a single character")
   
   mapchrom = sapply(map, attr, "chrom")
-  if(any(mapchrom == "X"))
-    stop2("X chromosomal simulations are put on hold, but will be back in the near future.")
+  isX = sapply(map, isXmap)
+  
+  Xchrom = all(isX)
+  if(any(isX) && !Xchrom)
+    stop2("Mixed autosomal/X simulations are not currently allowed: ", mapchrom)
   
   # Model: Either "chi" or "haldane"
   model = match.arg(model)
@@ -164,10 +159,11 @@ ibdsim = function(x, N = 1, ids = labels(x), map = "decode",
   }
   
   # Seed for random sampling
-  set.seed(seed)
+  if(!is.null(seed))
+    set.seed(seed)
   
   # Start-data with founder alleles
-  startData = distributeFounderAlleles(x, chrom = "AUTOSOMAL")
+  startData = distributeFounderAlleles(x, Xchrom = Xchrom)
   
   # The actual simulations
   genomeSimList = replicate(N, 
@@ -208,3 +204,11 @@ print.genomeSimList = function(x, ...) {
   "))
 }
 
+isXsim = function(s) {
+  if(inherits(s, "genomeSimList"))
+    chrom = attr(s, "chrom")
+  else if(inherits(s, "genomeSim") || is.matrix(s))
+    chrom = unique.default(s[, "chrom"])
+  
+  length(chrom) == 1 && (chrom == "X" || chrom == 23)
+}

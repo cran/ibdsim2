@@ -31,7 +31,10 @@ test_that("loadMap() catches errors", {
   expect_error(loadMap(uniform = NULL), "Argument `uniform` must be either TRUE or FALSE")
   expect_error(loadMap(sex = NA), "Argument `sexAverage` must be either TRUE or FALSE")
   expect_error(loadMap(sex = c(T,T)), "Argument `sexAverage` must be either TRUE or FALSE")
-  expect_error(loadMap(chrom = 30), "Index out of range")
+  expect_error(loadMap(chrom = 30), "Unknown chromosome name")
+  expect_error(loadMap(chrom = NA), "Unknown chromosome name")
+  expect_error(loadMap(chrom = c(1,1)), "Duplicated chromosome")
+  expect_error(loadMap(chrom = c(23,"X")), "Duplicated chromosome")
 })
 
 test_that("loadMap() options work", {
@@ -74,3 +77,14 @@ test_that("customMap() assigns male/female columns correctly", {
   m2 = customMap(data.frame(chrom = 1, mb = 0:1, female = c(0,3), male = c(0,2)))
   expect_equal(mapLen(m2), c(male = 2, female = 3))
 })
+
+test_that("convertMap() converts correctly", {
+  MB = 10
+  CM = 20
+  markermapMB = singleton(1) |> distributeMarkers(n=2, chromLen = MB) |> getMap()
+  
+  gmap = uniformMap(Mb = MB, cM = CM)
+  markermapCM = convertMap(markermapMB, gmap)
+  expect_equal(markermapCM$CM, c(0, CM))
+})
+

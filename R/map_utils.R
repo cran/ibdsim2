@@ -128,9 +128,12 @@ physRange.genomeMap = function(x, ...) {
 #' (centiMorgan) given a chromosome map. Linear extrapolation is used to convert
 #' positions between map points.
 #'
+#' @param chrom (Optional) A vector of chromosome labels.
 #' @param Mb A vector of physical positions (in Mb), or NULL.
 #' @param cM A vector of genetic positions (in cM), or NULL.
-#' @param map A data frame with columns `Mb` and `cM`.
+#' @param map A `genomeMap`, a `chromMap`, or a data frame with columns `Mb` and
+#'   `cM`. By default, `loadMap("decode19")` is used.
+#' @param sex Either "average", "male" or "female".
 #'
 #' @return A vector of the same length as the input.
 #'
@@ -141,77 +144,65 @@ physRange.genomeMap = function(x, ...) {
 #'
 #' # Conversion Mb -> cM
 #' phys = 1:5
-#' gen = convertPos(Mb = phys, map = map$male)
+#' gen = convertPos(Mb = phys, map = map, sex = "male")
 #' gen
 #'
 #' # Convert back (note the first position, which was outside of map)
-#' convertPos(cM = gen, map = map$male)
+#' convertPos(cM = gen, map = map, sex = "male")
 #'
 #' @export
-convertPos = function(Mb = NULL, cM = NULL, map) {
+convertPos = function(chrom = NULL, Mb = NULL, cM = NULL, map = "decode19", sex = c("average", "male", "female")) {
   if(is.null(Mb) + is.null(cM) != 1)
     stop2("Exactly one of `Mb` and `cM` must be NULL")
   
-  if(is.null(Mb)) {
-    from = cM
-    fromUnit = "cM"
-    toUnit = "Mb"
-  } else {
-    from = Mb
-    fromUnit = "Mb"
-    toUnit = "cM"
+  if(length(Mb) + length(cM) == 0)
+    return(numeric(0))
+  
+  if(is.character(map) && length(map) == 1)
+    map = loadMap(map)
+  
+  if(isGenomeMap(map)) {
+    n = length(chrom)
+    if(n == 0)
+      stop2("When `map` is a genome map, `chrom` cannot be NULL")
+    
+    mapchr = sapply(map, attr, "chrom")
+    res = numeric(length = n)
+    
+    for(chr in unique.default(chrom)) {
+      if(!chr %in% mapchr)
+        stop2("Chromosome not included in given map: ", chr)
+      idx = chrom == chr
+      
+      res[idx] = convertPos(Mb = Mb[idx], cM = cM[idx], map = map[[match(chr, mapchr)]], sex = sex)
+    }
+    
+    return(res)
   }
   
-  # Output vector
-  res = numeric(length(from))
+  if(isChromMap(map))
+    map = switch(match.arg(sex), 
+                 average = {tmp = map$female; tmp$cM = (map$male$cM + map$female$cM)/2; tmp},
+                 male = map$male, 
+                 female = map$female)
   
-  mapFrom = map[[fromUnit]]
-  mapTo = map[[toUnit]]
-  mapN = nrow(map)
-  
-  # Deal with values outside of map
-  before = from < mapFrom[1]
-  after =  from > mapFrom[mapN]
-  res[before] = 0
-  res[after] = if(toUnit == "Mb") NA else mapTo[mapN]
-  
-  # Locate inside values
-  inside = !before & !after
-  src = from[inside]
-  idx = findInterval(src, mapFrom, all.inside = TRUE)
-  
-  # Rate of change
-  rate = (mapTo[idx + 1] - mapTo[idx]) / (mapFrom[idx + 1] - mapFrom[idx])
-  
-  # Extrapolate
-  res[inside] = mapTo[idx] + (src - mapFrom[idx]) * rate
-  
-  res
+  .convertPos1(Mb = Mb, cM = cM, map = map)
 }
 
 
-# Convert map with MB column to CM column
-convertMap = function(markerMap, genomeMap) {
-  genomeMap = genomeMap(genomeMap)
+.convertPos1 = function(Mb = NULL, cM = NULL, map) {
+  if(is.null(Mb) + is.null(cM) != 1)
+    stop2("Exactly one of `Mb` and `cM` must be NULL")
   
-  # Average genome map
-  sexAverage = lapply(genomeMap, function(cmap)
-    as.data.frame(cbind(Mb = cmap$male$Mb, cM = (cmap$male$cM + cmap$female$cM)/2), 
-                  row.names = NULL, optional = TRUE))
-  names(sexAverage) = sapply(genomeMap, attr, 'chrom')
+  if(length(Mb) + length(cM) == 0)
+    return(numeric(0))
+
+  if(!is.data.frame(map))
+    stop2("Expected `map` to be a data frame, not a ", class(map))
   
-  # Split marker map by chromosome
-  chromSplit = split(markerMap, markerMap$CHROM)
-  
-  # Convert positions in each chrom
-  newmap = lapply(chromSplit, function(chrmap) {
-    chr = as.character(chrmap$CHROM[1])
-    CM = convertPos(Mb = chrmap$MB, map = sexAverage[[chr]])
-    cbind(chrmap, CM = CM)[c("CHROM", "MARKER", "CM", "MB")] # 3 first cols as used by MERLIN
-  })
-  
-  res = do.call(rbind, newmap)
-  rownames(res) = NULL
-  
-  res
+  if(is.null(Mb))
+    convert_pos_C(pos = cM, mapFrom = map$cM, mapTo = map$Mb, extValue = NA)
+  else
+    convert_pos_C(pos = Mb, mapFrom = map$Mb, mapTo = map$cM, extValue = map$cM[length(map$cM)])
 }
+

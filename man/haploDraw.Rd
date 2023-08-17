@@ -9,25 +9,32 @@ haploDraw(
   ibd,
   chrom = NULL,
   ids = NULL,
+  unit = "mb",
+  L = NULL,
   pos = 1,
   cols = NULL,
   height = 4,
-  width = 0.5,
+  width = 0.75,
   sep = 0.75,
-  dist = 1.5,
+  dist = 1,
   ...
 )
 }
 \arguments{
 \item{x}{A \code{ped} object.}
 
-\item{ibd}{A \code{genomeSim} object.}
+\item{ibd}{A \code{genomeSim} object, typically made by \code{\link[=ibdsim]{ibdsim()}}.}
 
 \item{chrom}{A chromosome number, needed if \code{ibd} contains data from multiple
 chromosomes.}
 
 \item{ids}{A vector indicating for which pedigree members haplotypes should
 be drawn. If NULL (default), all individuals in \code{ibd} are included.}
+
+\item{unit}{Either "mb" (default) or "cm".}
+
+\item{L}{A positive number: the chromosome length. By default derived from
+\code{ibd}.}
 
 \item{pos}{A vector recycled to \code{pedsize(x)}, indicating where haplotypes
 should be drawn relative to the pedigree symbols: 0 = no haplotypes; 1 =
@@ -38,16 +45,16 @@ below; 2 = left; 3 = above; 4 = right. By default, all are placed below.}
 \item{height}{The haplotype height divided by the height of a pedigree
 symbol.}
 
-\item{width}{The haplotype width divided by the width of a pedigree symbol.}
+\item{width}{The haplotype width, divided by the width of a pedigree symbol.}
 
-\item{sep}{The separation between haplotypes within a pair, given as a
-fraction of \code{width}.}
+\item{sep}{The separation between haplotypes within a pair, measured in
+pedigree symbol widths.}
 
 \item{dist}{The distance between pedigree symbols and the closest haplotype,
-given as a fraction of \code{width}.}
+measured in pedigree symbol widths.}
 
-\item{...}{Arguments passed on to \code{plot.ped()}. In particular, if the
-haplotypes appear cropped it usually helps to increase the \code{margins}.}
+\item{...}{Further arguments passed on to \code{plot.ped()}, e.g. \code{margins},
+\code{cex}, \code{keep.par}.}
 }
 \value{
 None.
@@ -57,18 +64,22 @@ Visualise the IBD pattern of a single chromosome, by drawing haplotypes onto
 the pedigree.
 }
 \examples{
-op = par(no.readonly = TRUE)
 
 ###############################
 # Example 1: A family quartet #
 ###############################
 
 x = nuclearPed(2)
-s = ibdsim(x, N = 1, map = uniformMap(M = 1), seed = 4276)
-s[[1]]
+map = uniformMap(M = 1)
+s = ibdsim(x, map = map, seed = 4276)
 
-haploDraw(x, s[[1]], pos = c(2,4,2,4), cols = c(3,7,2,4),
-          margins = c(2, 5, 5, 5), cex = 1.2)
+haploDraw(x, s)
+
+# Custom colours and placements
+haploDraw(x, s, cols = c(3,7,2,4), pos = c(2,4,2,4))
+
+# Standard plot options apply
+haploDraw(x, s, margins = 3, cex = 1.5, title = "Full sibs")
 
 
 ###########################
@@ -76,27 +87,20 @@ haploDraw(x, s[[1]], pos = c(2,4,2,4), cols = c(3,7,2,4),
 ###########################
 
 x = halfCousinPed(0, child = TRUE)
-s = ibdsim(x, N = 1, map = uniformMap(M = 1),
-           skipRecomb = spouses(x, 2), seed = 19499)
-s[[1]]
+map = uniformMap(M = 1)
+s = ibdsim(x, map = map, skipRecomb = c(1,3), seed = 2)
 
-# Grey colour (8) for irrelevant founder alleles
-haploDraw(x, s[[1]], pos = c(0,1,0,2,4,4),
-          cols = c(8,8,3,7,8,8), margin = c(2, 2, 2, 2))
-
+# Only include relevant individuals (skip 1 and 3)
+haploDraw(x, s, ids = c(2,4,5,6), pos = c(1,2,4,4))
 
 ###############################
 # Example 3: X-chromosomal sims
 ###############################
 
 x = nuclearPed(2, sex = 2:1)
-s = ibdsim(x, N = 1, map = uniformMap(M = 1, chrom = "X"), seed = 1)
-s[[1]]
+s = ibdsim(x, N = 1, map = uniformMap(M = 1, chrom = "X"), seed = 123)
 
-haploDraw(x, s[[1]], pos = c(2,4,2,4), margins = c(2, 5, 5, 5), cex = 1.2)
+haploDraw(x, s)
 
-
-# Restore graphics parameters
-par(op)
 
 }

@@ -18,20 +18,26 @@
 #' @return A copy of `x` where marker genotypes have been simulated conditional
 #'   on `ibdpattern`.
 #'
-#' @seealso [ibdsim()]
+#' @seealso [ibdsim()], `forrel::profileSim()`.
 #'
 #' @examples
-#' # A pedigree with two siblings
-#' x = nuclearPed(2, sex = 1:2)
-#'
-#' # Attach 3 linked markers on chromosome 1
-#' pos = c(20, 50, 70)   # marker positions in megabases
-#' mlist = lapply(pos, function(i)
-#'   marker(x, alleles = letters[1:10], chrom = 1, posMb = i))
-#' x = setMarkers(x, mlist)
-#'
+#' 
+#' # Brother-sister pedigree
+#' ped = nuclearPed(2, sex = 1:2)
+#' 
+#' # Alleles
+#' als = letters[1:10]
+#' 
+#' 
+#' ### Autosomal simulation
+#' 
+#' x = ped |> 
+#'   addMarker(alleles = als, chrom = 1, posMb = 20) |> 
+#'   addMarker(alleles = als, chrom = 1, posMb = 50) |> 
+#'   addMarker(alleles = als, chrom = 1, posMb = 70)
+#'   
 #' # Simulate the underlying IBD pattern in the pedigree
-#' sim = ibdsim(x, 1, map = uniformMap(M = 1, chrom = 1), seed = 123)[[1]]
+#' sim = ibdsim(x, map = uniformMap(M = 1, chrom = 1), seed = 123)
 #'
 #' # Simulate genotypes for the sibs conditional on the given IBD pattern
 #' profileSimIBD(x, sim, ids = 3:4, seed = 123)
@@ -41,14 +47,15 @@
 #'
 #'
 #' ### X chromosomal simulation
-#' mlistX = list(marker(x, alleles = 1:4, chrom = "X", posMb = 1),
-#'               marker(x, alleles = 1:4, chrom = "X", posMb = 50),
-#'               marker(x, alleles = 1:4, chrom = "X", posMb = 100))
-#' x = setMarkers(x, mlistX)
+#' 
+#' y = ped |> 
+#'   addMarker(alleles = als, chrom = "X", posMb = 1) |> 
+#'   addMarker(alleles = als, chrom = "X", posMb = 50) |> 
+#'   addMarker(alleles = als, chrom = "X", posMb = 100)
 #'
-#' simX = ibdsim(x, N = 1, map = loadMap("decode19", chrom = 23), seed = 11)[[1]]
+#' simy = ibdsim(y, map = loadMap("decode19", chrom = 23), seed = 11)
 #'
-#' profileSimIBD(x, simX, seed = 12)
+#' profileSimIBD(y, simy, seed = 12)
 #'
 #' @export
 profileSimIBD = function(x, ibdpattern, ids = NULL, markers = NULL, seed = NULL, verbose = TRUE) {
@@ -98,7 +105,7 @@ profileSimIBD = function(x, ibdpattern, ids = NULL, markers = NULL, seed = NULL,
     stop2("Chromosome missing from `ibdpattern`: ", setdiff(mchr, achr))
   
   # Allele columns
-  matcols = 4 + seq_along(ids)*2L 
+  matcols = 5 + seq_along(ids)*2L 
   patcols = matcols - 1L           
   
   # Number of founder alleles (i.e,. "different colours")
@@ -112,7 +119,7 @@ profileSimIBD = function(x, ibdpattern, ids = NULL, markers = NULL, seed = NULL,
     
     # IBD pattern for this marker
     achr = aChr[[mchr[i]]]
-    rw = if(nrow(achr) > 1) findInterval(mpos[i], achr[, 'start'], all.inside = TRUE) else 1L
+    rw = if(nrow(achr) > 1) findInterval(mpos[i], achr[, 'startMB'], all.inside = TRUE) else 1L
     ibdpat = achr[rw, patcols]
     ibdmat = achr[rw, matcols]
     

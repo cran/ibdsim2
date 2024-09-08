@@ -1,4 +1,4 @@
-suppressPackageStartupMessages({
+suppressMessages(suppressPackageStartupMessages({
   library(shiny)
   library(shinyBS)
   library(shinyjs)
@@ -8,7 +8,7 @@ suppressPackageStartupMessages({
   library(lubridate)
   library(glue)
   library(zip)
-})
+}))
 
 
 .VERSION = packageDescription("ibdsim2")$Version
@@ -56,7 +56,7 @@ fluidRow(
   # Left sidebar
   mySidebarPanel( # style = "padding-top: 5px; padding-bottom:5px",
     h4("Pedigree 1"),
-    selectizeInput("builtin1", "Built-in pedigree", selected = "Siblings", 
+    selectizeInput("builtin1", "Built-in pedigree", selected = "Half-sibs, maternal", 
                    choices = c(Choose = "", names(BUILTIN_PEDS)), size = 10),
     fileInput("loadped1", "Load ped file", buttonLabel = icon("folder-open"),
               accept = c(".ped", ".txt"), width = "100%", placeholder = NULL),
@@ -177,33 +177,34 @@ server = function(input, output, session) {
   ids1 = reactive(setdiff(trimws(strsplit(input$ids1, ",")[[1]]), ""))
   ids2 = reactive(setdiff(trimws(strsplit(input$ids2, ",")[[1]]), ""))
   
-  observeEvent(input$builtin1, ped1(BUILTIN_PEDS[[req(input$builtin1)]]))
-  observeEvent(input$builtin2, ped2(BUILTIN_PEDS[[req(input$builtin2)]]))
+  observeEvent(input$builtin1, {
+    choice = req(input$builtin1)
+    ped1(BUILTIN_PEDS[[choice]])
+    updateTextInput(session, "ids1", value = toString(DEFAULT_IDS[[choice]]))
+  })
   
+  observeEvent(input$builtin2, {
+    choice = req(input$builtin2)
+    ped2(BUILTIN_PEDS[[choice]])
+    updateTextInput(session, "ids2", value = toString(DEFAULT_IDS[[choice]]))
+  })
+
   observeEvent(input$loadped1, {
     x = tryCatch(loadPed(input$loadped1$datapath), 
                    error = errModal, warning = errModal)
     ped1(req(x))
-    updateSelectizeInput(session, "builtin1", selected = "")
+    updateTextInput(session, "ids1", value = "")
+    isolate(updateSelectizeInput(session, "builtin1", selected = ""))
   })
   
   observeEvent(input$loadped2, {
     ped = tryCatch(loadPed(input$loadped2$datapath),
                    error = errModal, warning = errModal)
     ped2(req(ped))
-    updateSelectizeInput(session, "builtin2", selected = "")
+    updateTextInput(session, "ids2", value = "")
+    isolate(updateSelectizeInput(session, "builtin2", selected = ""))
   })
 
-  observeEvent(ped1(), {
-    ids = if(!is.ped(x <- ped1())) "" else toString(leaves(x))
-    updateTextInput(session, "ids1", value = ids)
-  })
-  
-  observeEvent(ped2(), {
-    ids = if(!is.ped(x <- ped2())) "" else toString(leaves(x))
-    updateTextInput(session, "ids2", value = ids)
-  })
-  
   observeEvent(input$chrom1, {
     if(input$chrom1 == "X") {
       updateRadioButtons(session, "sexspec1", selected = "On")
@@ -309,7 +310,8 @@ server = function(input, output, session) {
   })
   
 # Plots ----------------------------------------------------------
-
+  
+  # Red and blue used consistently for the two pedigrees
   COLS = c(2, 4)
   
   output$pedplot1 = renderPlot({
@@ -317,9 +319,11 @@ server = function(input, output, session) {
     lab = input$label1
     plotWidth = session$clientData$output_pedplot1_width
     mar = calculateMargin(plotWidth)
+    isBuiltin = input$builtin1 != ""
     
     tryCatch(
-      plotped(ped, ids = ids1(), col = COLS[1], title = lab, margin = mar),
+      plotped(ped, ids = ids1(), col = COLS[1], title = lab, margin = mar, 
+              straightlegs = isBuiltin),
       error = function(e) {
         plot.new(); box(which = "outer", col = 1); title(lab); 
         text(x = 0.5, y = 0.6, parsePlotError(e), cex = 1.1, col = 2)
@@ -331,9 +335,11 @@ server = function(input, output, session) {
     lab = input$label2
     plotWidth = session$clientData$output_pedplot2_width
     mar = calculateMargin(plotWidth)
+    isBuiltin = input$builtin2 != ""
     
     tryCatch(
-      plotped(ped, ids = ids2(), col = COLS[2], title = lab, margin = mar),
+      plotped(ped, ids = ids2(), col = COLS[2], title = lab, margin = mar,
+              straightlegs = isBuiltin),
       error = function(e) {
         plot.new(); box(which = "outer", col = 1); title(lab); 
         text(x = 0.5, y = 0.6, parsePlotError(e), cex = 1.1, col = 2)
@@ -422,4 +428,4 @@ server = function(input, output, session) {
 }
 
 # Run the application 
-shinyApp(ui = ui, server = server)
+suppressPackageStartupMessages(shinyApp(ui = ui, server = server))

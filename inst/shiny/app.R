@@ -1,13 +1,14 @@
 suppressMessages(suppressPackageStartupMessages({
-  library(shiny)
-  library(shinyBS)
-  library(shinyjs)
   library(pedtools)
   library(ribd)
   library(ibdsim2)
   library(lubridate)
+  library(ggplot2)
+  library(patchwork)
   library(glue)
   library(zip)
+  library(shiny)
+  library(shinyjs)
 }))
 
 
@@ -21,19 +22,20 @@ suppressMessages(suppressPackageStartupMessages({
 ui = fluidPage(
   includeCSS("www/custom.css"),
   tags$head(includeHTML(system.file("shiny/www/GA.html", package = "ibdsim2"))),
+  tags$head(tags$script(src = "scripts.js")),
   
   useShinyjs(),
   useBusyIndicators(),
   
   tags$head(tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Lobster&display=swap")),
   
-  tags$div(id = "banner",
-        p(id="big-text", "Major app update!"),
-        p("Check out the ", mylink("NEWS", href="https://github.com/magnusdv/ibdsim2/blob/master/NEWS.md", 
-                                  style = "font-weight:bold;")),
-        #p(id="small-text", "The old version still available ", 
-        #  mylink("here", href="https://magnusdv.shinyapps.io/ibdsim2-14/"))
-  ),
+  # tags$div(id = "banner",
+  #       p(id="big-text", "Major app update!"),
+  #       p("Check out the ", mylink("NEWS", href="https://github.com/magnusdv/ibdsim2/blob/master/NEWS.md", 
+  #                                 style = "font-weight:bold;")),
+  #       #p(id="small-text", "The old version still available ", 
+  #       #  mylink("here", href="https://magnusdv.shinyapps.io/ibdsim2-14/"))
+  # ),
 
   # Application title
   h2(id = "title-h2", "IBD sharing by family members"),
@@ -171,6 +173,8 @@ fluidRow(
 # Server logic
 server = function(input, output, session) {
 
+  observeEvent(input$browserClosed, stopApp())
+  
   ped1 = reactiveVal(NULL)
   ped2 = reactiveVal(NULL)
   
@@ -428,4 +432,6 @@ server = function(input, output, session) {
 }
 
 # Run the application 
-suppressPackageStartupMessages(shinyApp(ui = ui, server = server))
+suppressMessages(suppressPackageStartupMessages(
+  shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
+))

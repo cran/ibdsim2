@@ -1,7 +1,7 @@
 Type: Package
 Package: ibdsim2
 Title: Simulation of Chromosomal Regions Shared by Family Members
-Version: 2.2.0
+Version: 2.3.0
 Authors@R: 
     person("Magnus Dehli", "Vigeland", , "m.d.vigeland@medisin.uio.no", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-9134-4962"))
@@ -21,17 +21,19 @@ License: GPL-3
 URL: https://github.com/magnusdv/ibdsim2,
         https://magnusdv.github.io/pedsuite/,
         https://magnusdv.shinyapps.io/ibdsim2-shiny/
-Depends: pedtools (>= 2.8.0), R (>= 4.1.0)
+Depends: pedtools (>= 2.8.0), R (>= 4.2.0)
 Imports: ggplot2, glue, Rcpp, ribd (>= 1.7.1)
-Suggests: lubridate, patchwork, shiny, shinyjs, testthat, zip
+Suggests: lubridate, patchwork, shiny, shinyjs, shinyWidgets, testthat,
+        zip
 LinkingTo: Rcpp
 Encoding: UTF-8
 Language: en-GB
 RoxygenNote: 7.3.2
+LazyData: true
 NeedsCompilation: yes
-Packaged: 2025-03-03 12:17:19 UTC; magnu
-Author: Magnus Dehli Vigeland [aut, cre]
-    (<https://orcid.org/0000-0002-9134-4962>)
+Packaged: 2025-07-22 20:32:34 UTC; magnu
+Author: Magnus Dehli Vigeland [aut, cre] (ORCID:
+    <https://orcid.org/0000-0002-9134-4962>)
 Maintainer: Magnus Dehli Vigeland <m.d.vigeland@medisin.uio.no>
 Repository: CRAN
-Date/Publication: 2025-03-03 13:30:02 UTC
+Date/Publication: 2025-07-22 21:11:22 UTC
